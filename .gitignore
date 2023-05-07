@@ -1,0 +1,15 @@
+*.swp
+*secret*
+initramfs
+busybox
+!busybox/_install/*
+
+linux
+!linux/arch/riscv/boot/Image
+
+hello
+hello.o
+
+*/embedhello
+*/embedhello.hex
+

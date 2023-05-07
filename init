@@ -1,0 +1,11 @@
+#!/bin/sh
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mknod -m 666 /dev/ttyS0 c 4 64
+
+echo -e "\nBoot took $(cut -d' ' -f1 /proc/uptime) seconds\n"
+echo "Ctrl a x to exit QEMU"
+
+setsid  cttyhack sh
+exec /bin/sh
