@@ -19,4 +19,4 @@ _end:
 
 .data
 helloworld:
-	.ascii	"Hello World!\n"
+	.ascii	"Hello World.\n"
