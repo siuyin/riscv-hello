@@ -14,7 +14,6 @@ c_embed: startup.o main.o junk.o
 %.o: %.s
 	$(AS) -o $@ $<
 
-
 junk.s: junk.c
 	$(CC) -o junk.s -S junk.c
 
