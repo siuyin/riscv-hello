@@ -13,6 +13,11 @@ _start:
 	la	a0, msg		# load address of msg into a0 (argument 0) register, t0 above is temporary 0
 	jal	puts		# jump and link: call puts 
 
+	la	a0, msg2	# call puts again but now with msg2
+	jal	puts
+
+	j	halt		# end the program
+
 puts:
 	li	t0, UART_BASE
 
@@ -36,3 +41,6 @@ halt: 	j 	halt
 .section .rodata
 msg:
 	.string "Hello risc-v!\n"
+
+msg2:
+	.string "This is my second string.\n"

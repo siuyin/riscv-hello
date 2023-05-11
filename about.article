@@ -142,26 +142,38 @@ virt                 RISC-V VirtIO board
 
 [https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15](https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15) gives more details about the emulated board.
 
+### Code for the emulated red-v board
 The sifive_e board emulates a serial port (UART) that allows strings to be printed onto the QEMU console.
 
-This is the assembly code to write to the serial port.
+`puts` in the assembly code below writes to the serial port.
 
 `src/embed/embedhello.s:`
 
 .code /src/embed/embedhello.s
 
+### RISC-V priviledged mode and multiple hardware threads
 The `csrr` instruction surprised me. Normally embedded processes are single core with a single thread of execution.
 With some implementations, you may have multiple cores. This codes targets only the core with thread ID of zero.
-See the extract from the RISC-V manual volume 2 below:
-
 
 .code /src/embed/embedhello.s /csrr/,/bnez/
+
+See the extract from the RISC-V manual volume 2 below:
+
 <img src="img/mhartid.png" width="800"/>
 
+
+### A customized linker script for the Red-V board
 `stack_top` is defined in the linker script
 
 `red-v.ld:`
 
 .code src/embed/red-v.ld
+
+After a red-v board is reset, its firmware points to address `0x20010000` to start executing code found there.
+This address is in the QSPI flash area.
+
+However the stack must sit in RAM and that starts at address `0x80000000` in the red-v board.
+
+<img src="img/fe310-memory-map.png" width="800"/>
 
 [https://sourceware.org/binutils/docs/ld/Scripts.html](https://sourceware.org/binutils/docs/ld/Scripts.html) is the GNU Binutils LD linker script reference.
