@@ -1,0 +1,167 @@
+# Learning RISC-V
+with embedded targets and QEMU
+11 May 2023
+
+Loh Siu Yin
+Beyond Broadcast LLP
+siuyin@beyondbroadcast.com
+
+## Why this article?
+
+The chips I use are ARM Cortex M0/M0+, MSP430G2, PIC16 and STM8.
+
+I then came across RISC-V RV32EC in the form of the CH32V003.
+The `32` means 32-bit `E` for the embedded capability and
+`C` for compressed instructions to help reduce code size.
+
+Each chip had a steep learning curve and RISC-V was similar.
+The amount of resources was overwhelming. Where do I start?
+How do I create bare-metal code to blink an LED?
+
+My starting point was: [https://riscv.org/](https://riscv.org/).
+
+
+## Running Linux on QEMU
+[https://risc-v-getting-started-guide.readthedocs.io/en/latest/linux-qemu.html](https://risc-v-getting-started-guide.readthedocs.io/en/latest/linux-qemu.html)
+shows you how to _almost_ get a QEMU environment up the hard way.
+You compile QEMU, Linux and BusyBox for RISC-V.
+I later found I could also use the QEMU packaged the linux distribution I used. 
+For Ubuntu 22.04 it was the `qemu-system-misc` package.
+
+When I got to the running stage at [https://risc-v-getting-started-guide.readthedocs.io/en/latest/linux-qemu.html#running](https://risc-v-getting-started-guide.readthedocs.io/en/latest/linux-qemu.html#running),
+it crashed with:
+
+```
+[    1.200880] [<ffffffff80825ac4>] kernel_init+0x1e/0x10a
+[    1.201294] [<ffffffff80003762>] ret_from_fork+0xa/0x1c
+[    1.202683] ---[ end Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(254,0) ]---
+QEMU: Terminated
+```
+
+After searching the internet, I learned I needed to provide an initial ram filesystem.
+The invocation that finally worked for me was:
+
+`runqemu.sh:`
+
+.code runqemu.sh
+
+And the output was a root linux prompt in QEMU:
+
+```
+[    1.368036] clk: Disabling unused clocks
+[    1.448878] Freeing unused kernel image (initmem) memory: 2184K
+[    1.450971] Run /init as init process
+
+Boot took 1.71 seconds
+
+Ctrl a x to exit QEMU
+~ # 
+```
+
+But how do you get that `initramfs.cpio.gz` file?
+
+## Using Busybox as the root filesystem in RISC-V QEMU
+
+After more searching on the internet, I found: [https://gist.github.com/chrisdone/02e165a0004be33734ac2334f215380e](https://gist.github.com/chrisdone/02e165a0004be33734ac2334f215380e)
+
+That lead me to write:
+
+`mkinitramfs.sh:`
+
+.code mkinitramfs.sh
+
+And my `init`:
+
+.code init
+
+For reference here is a snapshot of my project root layout:
+
+```
+siuyin@ln03:~/riscv64-linux$ ls -F
+about.article  busybox/  go.sum  hello.o  initramfs/         linux/           README.md    src/
+build.sh*      go.mod    hello*  init*    initramfs.cpio.gz  mkinitramfs.sh*  runqemu.sh*
+```
+
+Ignore the go.sum and go.mod files as there are there only to support this `about.article` I am writing.
+
+## Running a RISC-V binary in QEMU runing RISC-V Linux
+I chose to learn RISC-V assembly first as that was closest to the bare metal.
+Below is my hello world in assembly.
+
+You may find this quick reference card handy: [https://www.cl.cam.ac.uk/teaching/1617/ECAD+Arch/files/docs/RISCVGreenCardv8-20151013.pdf](https://www.cl.cam.ac.uk/teaching/1617/ECAD+Arch/files/docs/RISCVGreenCardv8-20151013.pdf)
+
+`src/linux/hello.s:`
+
+.code src/linux/hello.s
+
+If you looked closely at my `mkinitramfs.sh` earlier,
+you will see that I copied the `hello` binary to the `initramfs.cpio.gz` .
+
+This is how I built the `hello` binary:
+
+`build.sh:`
+
+.code build.sh
+
+The `-march=rv64imac` reads: assemble for  RISC-V 64bit with integer, multiply (and divide), atomic instructions and compressed instructions.
+
+Below is the output of a run in QEMU:
+
+```
+[    1.418066] Freeing unused kernel image (initmem) memory: 2184K
+[    1.420248] Run /init as init process
+
+Boot took 1.67 seconds
+
+Ctrl a x to exit QEMU
+~ # ls -F
+bin/     etc/     init*    proc/    sbin/    usr/
+dev/     hello*   linuxrc@ root/    sys/
+~ # ./hello 
+Hello World.
+~ #
+```
+
+## Running RISC-V on QEMU bare-metal
+
+In the previous example I `syscall`'ed into Linux to print a string and to exit.
+Microcontrollers can be very small and will usually not run Linux. They may not run any operating system at all.
+
+Thus my next RISC-V assembly program targets a sifive_e board that is emulated by QEMU.
+
+```
+siuyin@ln03:~/riscv64-linux$ qemu-system-riscv32 -machine help
+Supported machines are:
+none                 empty machine
+opentitan            RISC-V Board compatible with OpenTitan
+sifive_e             RISC-V Board compatible with SiFive E SDK
+sifive_u             RISC-V Board compatible with SiFive U SDK
+spike                RISC-V Spike board (default)
+virt                 RISC-V VirtIO board
+```
+
+[https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15](https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15) gives more details about the emulated board.
+
+The sifive_e board emulates a serial port (UART) that allows strings to be printed onto the QEMU console.
+
+This is the assembly code to write to the serial port.
+
+`src/embed/embedhello.s:`
+
+.code /src/embed/embedhello.s
+
+The `csrr` instruction surprised me. Normally embedded processes are single core with a single thread of execution.
+With some implementations, you may have multiple cores. This codes targets only the core with thread ID of zero.
+See the extract from the RISC-V manual volume 2 below:
+
+
+.code /src/embed/embedhello.s /csrr/,/bnez/
+<img src="img/mhartid.png" width="800"/>
+
+`stack_top` is defined in the linker script
+
+`red-v.ld:`
+
+.code src/embed/red-v.ld
+
+[https://sourceware.org/binutils/docs/ld/Scripts.html](https://sourceware.org/binutils/docs/ld/Scripts.html) is the GNU Binutils LD linker script reference.

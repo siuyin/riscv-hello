@@ -1,4 +1,4 @@
-CC=riscv64-unknown-elf-gcc -march=rv32ec -mabi=ilp32e
+CC=riscv64-unknown-elf-gcc -march=rv32ec -mabi=ilp32e -fpic
 AS=riscv64-unknown-elf-as -march=rv32ec
 LD=riscv64-unknown-elf-ld -nostdlib -melf32lriscv -Tred-qemu.ld
 SIZE=riscv64-unknown-elf-size

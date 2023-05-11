@@ -10,6 +10,7 @@ linux
 hello
 hello.o
 
-*/embedhello
-*/embedhello.hex
+**/embedhello
+**/embedhello-qemu
+**/embedhello.hex
 

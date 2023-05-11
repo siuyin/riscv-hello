@@ -1,5 +1,5 @@
 	.file	"junk.c"
-	.option nopic
+	.option pic
 	.attribute arch, "rv32e1p9_c2p0"
 	.attribute unaligned_access, 0
 	.attribute stack_align, 4
