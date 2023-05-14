@@ -6,11 +6,15 @@
 .globl _start
 
 _start:
-	csrr 	t0, mhartid	# load the mhartid (machine hardware thread ID) control and status register into t0
-	bnez 	t0, halt	# branch to halt if the hartid is not zero -- all other threads are halted
+	# load the mhartid (machine hardware thread ID) control and status register into t0
+	csrr 	t0, mhartid
+	# branch to halt if the hartid is not zero -- all other threads are halted
+	bnez 	t0, halt
 
-	la	sp, stack_top	# load address stack_top (from linker script) into stack pointer
-	la	a0, msg		# load address of msg into a0 (argument 0) register, t0 above is temporary 0
+	# load address stack_top (from linker script) into stack pointer
+	la	sp, stack_top
+	# load address of msg into a0 (argument 0) register, t0 above is temporary 0
+	la	a0, msg
 	jal	puts		# jump and link: call puts 
 
 	la	a0, msg2	# call puts again but now with msg2

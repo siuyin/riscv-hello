@@ -151,11 +151,11 @@ The sifive_e board emulates a serial port (UART) that allows strings to be print
 
 .code /src/embed/embedhello.s
 
-### RISC-V priviledged mode and multiple hardware threads
+### RISC-V privileged mode and multiple hardware threads
 The `csrr` instruction surprised me. Normally embedded processes are single core with a single thread of execution.
 With some implementations, you may have multiple cores. This codes targets only the core with thread ID of zero.
 
-.code /src/embed/embedhello.s /csrr/,/bnez/
+.code /src/embed/embedhello.s /mhartid/,/bnez/
 
 See the extract from the RISC-V manual volume 2 below:
 
