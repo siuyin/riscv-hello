@@ -122,7 +122,7 @@ Hello World.
 ~ #
 ```
 
-## Running RISC-V on QEMU bare-metal
+## Running RISC-V on QEMU 'bare-metal'
 
 In the previous example I `syscall`'ed into Linux to print a string and to exit.
 Microcontrollers can be very small and will usually not run Linux. They may not run any operating system at all.
@@ -142,7 +142,7 @@ virt                 RISC-V VirtIO board
 
 [https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15](https://github.com/qemu/qemu/blob/792f77f376adef944f9a03e601f6ad90c2f891b2/hw/riscv/sifive_e.c#L15) gives more details about the emulated board.
 
-### Code for the emulated red-v board
+### Assembly code for the emulated red-v board
 The sifive_e board emulates a serial port (UART) that allows strings to be printed onto the QEMU console.
 
 `puts` in the assembly code below writes to the serial port.
@@ -177,3 +177,50 @@ However the stack must sit in RAM and that starts at address `0x80000000` in the
 <img src="img/fe310-memory-map.png" width="800"/>
 
 [https://sourceware.org/binutils/docs/ld/Scripts.html](https://sourceware.org/binutils/docs/ld/Scripts.html) is the GNU Binutils LD linker script reference.
+
+### C code for the emulated red-v board
+Below is the startup `assembly` code to jump to the main C code.
+
+`src/c_embed/startup.s:`
+
+.code src/c_embed/startup.s
+
+And below is the main C code.
+
+`src/c_embed/main.c:`
+
+.code src/c_embed/main.c
+
+Let's take a closer look at:
+
+.code src/c_embed/main.c /while/,/$/
+
+We cast the `size_t` pointed to by UART_BASE to a `volatile int`.
+
+`volatile` tells the compiler the value may be changed by the hardware and
+thus to not eliminate it when optimizing the code.
+
+`int` makes it a signed integer. As the red-v manual extract below states,
+the most siginificant bit (MSB) will be set if the FIFO is full --  and thus not ready to take another byte.
+if the MSB is set, it is a negative number.
+
+Thus the code reads:  
+wait for the TX FIFO to be not full then write `ch` to the memory pointed to by `TXDATA`.
+
+
+.code src/c_embed/main.c /while/,/TXDATA = ch/
+
+<img src="img/txdata.png" width="800"/>
+
+### Makefile for embedded C
+
+`src/c_embed/Makefile:`
+
+.code src/c_embed/Makefile
+
+The line:
+
+.code src/c_embed/Makefile /no-builtin/,/$/
+
+is needed because `gcc` already knows of a `putchar` function in libc and it is not a void function.
+
