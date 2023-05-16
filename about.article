@@ -125,7 +125,7 @@ Hello World.
 ## Running RISC-V on QEMU 'bare-metal'
 
 In the previous example I `syscall`'ed into Linux to print a string and to exit.
-Microcontrollers can be very small and will usually not run Linux. They may not run any operating system at all.
+Microcontrollers can be very small and usually will not run Linux. They may not run any operating system at all.
 
 Thus my next RISC-V assembly program targets a sifive_e board that is emulated by QEMU.
 
