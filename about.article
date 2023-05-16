@@ -178,7 +178,24 @@ However the stack must sit in RAM and that starts at address `0x80000000` in the
 
 [https://sourceware.org/binutils/docs/ld/Scripts.html](https://sourceware.org/binutils/docs/ld/Scripts.html) is the GNU Binutils LD linker script reference.
 
-### C code for the emulated red-v board
+### Output of 'bare-metal' assembly code
+
+`src/embed/run-qemu.sh:'
+
+.code src/embed/run-qemu.sh
+
+Note the machine type is 'sifive_e'.
+
+```
+$ ./run-qemu.sh 
+exit QEMU: Ctrl a x
+
+
+Hello risc-v!
+This is my second string.
+```
+
+## C code for the emulated red-v board
 Below is the startup `assembly` code to jump to the main C code.
 
 `src/c_embed/startup.s:`
@@ -190,6 +207,7 @@ And below is the main C code.
 `src/c_embed/main.c:`
 
 .code src/c_embed/main.c
+
 
 Let's take a closer look at:
 
@@ -224,3 +242,19 @@ The line:
 
 is needed because `gcc` already knows of a `putchar` function in libc and it is not a void function.
 
+### Embedded C code output
+
+`src/c_embed/run-qemu.sh:'
+
+.code src/c_embed/run-qemu.sh
+
+Note the machine type is 'sifive_e'.
+
+```
+$ ./run-qemu.sh 
+exit QEMU: Ctrl a x
+
+
+Hello RISC-V from C!
+bye
+```
