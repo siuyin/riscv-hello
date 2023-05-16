@@ -1,22 +1,22 @@
-CC=riscv64-unknown-elf-gcc -march=rv32ec -mabi=ilp32e -fpic
+CC=riscv64-unknown-elf-gcc -nostdlib -Wno-builtin-declaration-mismatch -march=rv32ec -mabi=ilp32e -fpic
 AS=riscv64-unknown-elf-as -march=rv32ec
 LD=riscv64-unknown-elf-ld -nostdlib -melf32lriscv -Tred-qemu.ld
 SIZE=riscv64-unknown-elf-size
 OBJDUMP=riscv64-unknown-elf-objdump
 
-OBJS=c_embed startup.o main.o junk.o junk.s
+OBJS=c_embed startup.o main.o 
 
 all: c_embed
 
-c_embed: startup.o main.o junk.o
-	$(LD) -o c_embed startup.o main.o junk.o
+c_embed: startup.o main.o
+	$(LD) -o c_embed startup.o main.o
 	$(SIZE) c_embed
+
 %.o: %.s
 	$(AS) -o $@ $<
 
-junk.s: junk.c
-	$(CC) -o junk.s -S junk.c
-
+main.s: main.c
+	$(CC) -o main.s -S main.c
 
 .PHONY: clean
 clean:

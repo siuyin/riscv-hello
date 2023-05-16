@@ -7,13 +7,9 @@ _start:
 	csrr 	t0, mhartid
 	bnez 	t0, halt
 
-	la	sp, stack_top
+	la	sp, stack_top	# initialize stack
 
-	la	a0, msg
-	jal	main
+	j	main		# jump to main
 
 halt: 	j 	halt
 
-.section .rodata
-msg:
-	.string "Hello multi-file linked risc-v!\n"
