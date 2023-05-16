@@ -14,9 +14,9 @@ hello.o
 **/embedhello-qemu
 **/embedhello.hex
 
-src/c_embed/c_embed
-src/c_embed/*.o
-src/c_embed/*.s
-!src/c_embed/startup.s
+**/c_embed/c_embed
+**/c_embed/*.o
+**/c_embed/*.s
+!**/c_embed/startup.s
 
 

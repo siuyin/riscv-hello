@@ -17,5 +17,6 @@ void puts(char *s) {
 }
 
 void main() {
-	puts("Hello RISC-V from C");
+	puts("Hello RISC-V from C!");
+	puts("bye");
 }
