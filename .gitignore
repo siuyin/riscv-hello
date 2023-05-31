@@ -19,4 +19,12 @@ src/c_embed/*.o
 src/c_embed/*.s
 !src/c_embed/startup.s
 
+**/*/*.lst
+**/*/*.map
+**/*/*.bin
+**/*/*.elf
+**/*/*.hex
+**/*/tags
+
+
 

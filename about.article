@@ -84,7 +84,7 @@ build.sh*      go.mod    hello*  init*    initramfs.cpio.gz  mkinitramfs.sh*  ru
 
 Ignore the go.sum and go.mod files as there are there only to support this `about.article` I am writing.
 
-## Running a RISC-V binary in QEMU runing RISC-V Linux
+## Running a RISC-V binary in QEMU running RISC-V Linux
 I chose to learn RISC-V assembly first as that was closest to the bare metal.
 Below is my hello world in assembly.
 
@@ -219,7 +219,7 @@ We cast the `size_t` pointed to by UART_BASE to a `volatile int`.
 thus to not eliminate it when optimizing the code.
 
 `int` makes it a signed integer. As the red-v manual extract below states,
-the most siginificant bit (MSB) will be set if the FIFO is full --  and thus not ready to take another byte.
+the most significant bit (MSB) will be set if the FIFO is full --  and thus not ready to take another byte.
 if the MSB is set, it is a negative number.
 
 Thus the code reads:  
