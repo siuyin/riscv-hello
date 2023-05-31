@@ -32,15 +32,30 @@ gpiod_pd0_out:
 pd0_on:
 	# turn on LED connected to PD0
 	li t0, GPIOD_BSHR
+.pd0_on_1:
 	li t1, 1
 	sw t1, 0(t0)
+	jal delay
 
 pd0_off:
 	li t1, 1<<16
 	sw t1, 0(t0)
+	jal delay
 
 repeat:
-	j pd0_on
+	j .pd0_on_1
+
+delay:
+	li a0, 500000
+.delay_1:
+	addi a0,a0,-1
+	beqz a0, .delay_end
+	j .delay_1
+	
+.delay_end:
+	ret
+
+
 	
 
 	j halt
