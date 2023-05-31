@@ -11,10 +11,10 @@ siuyin@beyondbroadcast.com
 The chips I use are ARM Cortex M0/M0+, MSP430G2, PIC16 and STM8.
 
 I then came across RISC-V RV32EC in the form of the CH32V003.
-The `32` means 32-bit `E` for the embedded capability and
+The `32` means 32-bit. `E` is for the embedded capability and
 `C` for compressed instructions to help reduce code size.
 
-Each chip had a steep learning curve and RISC-V was similar.
+Each device had a steep learning curve and RISC-V was similar.
 The amount of resources was overwhelming. Where do I start?
 How do I create bare-metal code to blink an LED?
 
@@ -258,3 +258,18 @@ exit QEMU: Ctrl a x
 Hello RISC-V from C!
 bye
 ```
+
+## Really running RISC-V on the physical ch32v003 device
+
+Nanjing Qinheng Microelectronics, makers of the ch32v003 device have
+good development system based on Eclipse. Their provided libraries
+were decent but it still took a lot of poring over source code to 
+understand what was going on.
+
+Futher, their linker script and start-up code was dense and hard to understand.
+
+I belive this is why CNLohr wrote the lightweight ch32v003fun development environment.
+The environment consist of one C file, the associated header file, a linker script and
+software to drive the device programmer.
+The project is Open Source and I decided to use the linker script as the basis of my
+"hello world" into ch32v003 RISC-V assembly programming.
