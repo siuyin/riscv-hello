@@ -281,6 +281,8 @@ I found this listing of RISC-V [pseudo instructions](https://github.com/riscv-no
 Pseudo instructions are human friendly instructions
 that are translated by the assembler to actual RISC-V instructions.
 
+I also found this [tutorial](https://medium.com/swlh/risc-v-assembly-for-beginners-387c6cd02c49) helpful.
+
 <img src="img/ch32v003f4p6-pinout.png" width="800"/>
 
 `src/ch32v003/blink/blink.S:`
