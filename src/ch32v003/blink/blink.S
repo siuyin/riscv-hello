@@ -1,6 +1,5 @@
 .align 2
 
-#include "ch32v003fun.h"
 .equ RCC_APB2PCENR, 0x40021018
 .equ GPIOD_CFGLR, 0x40011400
 .equ GPIOD_BSHR, 0x40011410
@@ -52,8 +51,6 @@ delay:
 .delay_end:
 	ret
 
-
-	
 
 	j halt
 

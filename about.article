@@ -261,15 +261,193 @@ bye
 
 ## Really running RISC-V on the physical ch32v003 device
 
-Nanjing Qinheng Microelectronics, makers of the ch32v003 device have
+[Nanjing Qinheng Microelectronics](http://www.wch-ic.com/products/CH32V003.html), makers of the ch32v003 device have
 good development system based on Eclipse. Their provided libraries
 were decent but it still took a lot of poring over source code to 
 understand what was going on.
 
 Futher, their linker script and start-up code was dense and hard to understand.
 
-I belive this is why CNLohr wrote the lightweight ch32v003fun development environment.
+I belive this is why CNLohr wrote the lightweight [ch32v003fun](https://github.com/cnlohr/ch32v003fun) development environment.
 The environment consist of one C file, the associated header file, a linker script and
 software to drive the device programmer.
 The project is Open Source and I decided to use the linker script as the basis of my
 "hello world" into ch32v003 RISC-V assembly programming.
+
+### Code to blink an LED
+On my development board -- just the ch32v003 part soldered to a breakout board --
+I've connected an LED to PD0.
+
+<img src="img/ch32v003f4p6-pinout.png" width="800"/>
+
+`src/ch32v003/blink/blink.S:`
+
+.code src/ch32v003/blink/blink.S
+
+Let's break this down part by part. First consider:
+
+.code src/ch32v003/blink/blink.S /^\.align 2/,/^\.equ GPIOD_BSHR, 0x40011410/
+
+`.align 2` tells the linker to place the code on a two-byte (16-bit) boundary.
+This is allowed as the part implements compressed instructions (rv32ec).
+If not code must be aligned on a word (32-bit) boundary.
+
+What follows are `.equ` to equate symbols to memory-mapped register addresses.
+`RCC_APB2PCENR`, read, RCC APB2 P C EN R is the:  
+Reset and Clock Control  
+Advanced Peripheral Bus 2  
+Peripheral  
+Clock   
+Enable  
+Register.
+
+Now let's proceed to the system initialisation. 
+
+.code src/ch32v003/blink/blink.S /^\.section \.text/,/la sp, _eusrstack/
+
+The above code just loads the address of `_e usr stack` -- end of user stack
+to the stack pointer register. This is the bare essentials to get started.
+
+Next, we enable GPIOD by routing the device's internal clock to the GPIO internal module.
+The device's reset condition is to use the 24MHz HSI RC oscillator with an AHB prescaler of
+/3 (actual and not /1 documented in the reference manual).
+This results in an HCLK of 8MHz being available to AHB and AHB2 peripherals.
+
+But I don't see AHB2 ?! There is only one AHB bus on this device but on larger
+devices the Advanced High-performance Bus (a term I belive originating from ARM devices)
+are divided. Here on the ch32v003 AHB == AHB2 and vice-versa.
+
+<img src="img/ch32v003-clock.png" width="800"/>
+
+Here is how we actually enable GPIOD by feeding it the HCLK by setting bit 5 on RCC APB2 P C EN R.
+
+<img src="img/RCC_APB2CENR.png" width="800"/>
+
+.code src/ch32v003/blink/blink.S /gpiod_clk_en:/,/sw t0, 0\(t1\)/
+
+Study the above code:
+  
+`li t0, 1<<5` **l**oads **i**mmediate into `t0` the binary value 100000. Note: the lowest bit is named bit-0.
+
+What is `t0`? It is the ABI name for one of 16 CPU registers defined in RISC-V rv32e:
+
+<img src="img/rv32e-regs.png" width="800"/>
+
+Similarly RCC_APB2PCENR is loaded into `t1`.
+
+Next comes `sw t0, 0(t1)`, which reads:  
+**s**tore **w**ord in `t0` to the  
+memory address pointed to by `t1`,  
+offset by **0**.
+
+When the above code executes, it stores `1<<5` to the RCC_ABP2PCENR register which then enables GPIOD.
+The equivalent in C is: `RCC_APB2PCENR = 1<<5;`
+
+The GPIO ports on the ch32v003 reset to a floating input condition, effectivly
+disconnecting the IO pins from whatever they were connected to.
+We want to make GPIO Port D pin 0 an output.
+
+<img src="img/GPIOx_CFGLR.png" width="800"/>
+
+The tricky part here is to configure only the bits relating to `PD0`,
+leaving the rest unmodified.
+
+.code src/ch32v003/blink/blink.S /gpiod_pd0_out:/,/sw t1, 0\(t0\)/
+
+`lw t1, 0(t0)` : **l**oad **w**ord into `t1` from the memory address pointed to by `t0` offset by **0**.
+
+`andi t1,t1,~(0xf)` : **and** **i**mmediate the binary value `1111..11110000` (32-bits)  
+with the value in `t1` (the *second* `t1`)
+and store the result in `t1` (the *first* `t1`).
+
+When the above code is executed, binary value 0001 is stored into GPIOD_CFGLR and PD0 is now an output.
+
+It is now time to turn on PD0. For that we need to modify yet another register: GPIOD_BSHR which reads, GPIOD BS H R:  
+GPIOD  
+Bit Set
+High Reset .
+
+<img src="img/GPIOD_BSHR.png" width="800"/>
+
+Below is the code to assert PD0 to turn on the LED.
+
+.code src/ch32v003/blink/blink.S /pd0_on:/,/jal delay/
+
+`jal delay` : **j**ump **a**nd **l**ink to delay, means call the delay routine.
+
+.code src/ch32v003/blink/blink.S /delay:/,/ret/
+
+`beqz a0, .delay_end` : **b**ranch **eq**ual **z**ero to label `.delay_end` otherwise execute the following instruction.  
+Which is `j .delay_1` : **j**ump to label `.delay_1`.
+
+The code to turn off the LED is similar to the code to turning on the LED except that we write the `1` to the upper or higher half-word. This is why the regiter is named Reset High.
+
+.code src/ch32v003/blink/blink.S /pd0_off:/,/jal delay/
+
+Finally at the end of the on-delay-off-delay sequence, a jump is executed to repeat the whole cycle.
+A tiny optimisation is made by jumping to label `.pd0_on_1` to skip reloading the address of GPIOD BS HR into `t0`.
+
+.code src/ch32v003/blink/blink.S /pd0_on:/,/j .pd0_on_1/
+
+The LED connected to PD0 now blinks!
+
+### Makefile
+The above was the assembler code, a `Makefile` is use by `make` to compile and link the code.
+
+.code src/ch32v003/blink/Makefile
+
+It is not very interesting as it mainly specifies that the `TARGET` is named blink and its extension is `.S` .
+By the way, .s assember files only allow `.include FILE` but .S files are processed by the C pre-processor
+to allow `#include "file"` and `#define ...` .
+
+Here is the interesting `../ch32v003fun.mk` (credit CNLohr).
+It is long, so just give it a quick read-over and then I will explain the key sections of the file.
+
+.code src/ch32v003/ch32v003fun.mk
+
+Let's first look at the step where the compiler/assember is invoked:
+
+.code src/ch32v003/ch32v003fun.mk /\$\(TARGET\).elf : \$\(TARGET\).\$\(TARGET_EXT\)/,/\$\(PREFIX\)-gcc -o \$@ \$\^ \$\(CFLAGS\) \$\(LDFLAGS\)/
+
+The above reads:  
+```
+to produced TARGET elf (executable and link format binary)  
+check if TARGET.EXT (in our case blink.S) has changed  
+if it has:  
+  run GCC and output TARGET.elf (blink.elf) by compiling TARGET.EXT (blink.S)  
+  with the following CFLAGS and LDFLAGS
+if not, don't do anything.
+```
+
+Below are the CFLAGS:
+
+.code src/ch32v003/ch32v003fun.mk /CFLAGS\+=/,/EXTRA_CFLAGS/
+
+The interesting parts are:
+
+`-static-libgcc` : use the static version of libgcc
+
+`-ffunction-sections` : from the [gcc docs](https://gcc.gnu.org/onlinedocs/gcc-13.1.0/gcc/Optimize-Options.html).  
+Place each function or data item into its own section in the output file if the target supports arbitrary sections.
+
+`-mabi=ilp32e` : the machine application binary interface has integers,longs and pointer that are 32-bits wide,
+with function calls according to the embedded (as in rv32e) conventions.
+
+And the LDFLAGS:
+
+.code src/ch32v003/ch32v003fun.mk /LDFLAGS\+=-T/,/$/
+
+.code src/ch32v003/ch32v003fun.mk /#LINKER_SCRIPT/,/simple.ld/
+
+I have substituted CNLohr's linker script with my own simplified one, `simple.ld`.
+
+'--gc-sections' : garbage-collect unused sections. This reduces the size of the output binary.
+
+Let's study `simple.ld` below.
+
+.code src/ch32v003/simple.ld
+
+The script states .text and .rodata sections should be placed in FLASH.  
+And .data sections should be placed in RAM.
+
+Finally note the `_eusrstack` which notes the location of end of user stack.
