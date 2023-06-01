@@ -277,6 +277,9 @@ The project is Open Source and I decided to use the linker script as the basis o
 ### Code to blink an LED
 On my development board -- just the ch32v003 part soldered to a breakout board --
 I've connected an LED to PD0.
+I found this listing of RISC-V [pseudo instructions](https://github.com/riscv-non-isa/riscv-asm-manual/blob/master/riscv-asm.md#-a-listing-of-standard-risc-v-pseudoinstructions) useful.
+Pseudo instructions are human friendly instructions
+that are translated by the assembler to actual RISC-V instructions.
 
 <img src="img/ch32v003f4p6-pinout.png" width="800"/>
 
@@ -447,7 +450,11 @@ Let's study `simple.ld` below.
 
 .code src/ch32v003/simple.ld
 
-The script states .text and .rodata sections should be placed in FLASH.  
+The script states the entry point of the executable is `_start`.
+`_start` is a label in our `blink.S` source file.
+
+Also .text and .rodata sections should be placed in FLASH.  
 And .data sections should be placed in RAM.
 
-Finally note the `_eusrstack` which notes the location of end of user stack.
+Finally note the `_eusrstack` which defines the location of end of user stack.
+`_eusrstack` is used in `blink.S` to initialise the stack pointer.
