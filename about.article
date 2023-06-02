@@ -460,3 +460,18 @@ And .data sections should be placed in RAM.
 
 Finally note the `_eusrstack` which defines the location of end of user stack.
 `_eusrstack` is used in `blink.S` to initialise the stack pointer.
+
+### Setting HCLK to run at 24MHz
+According to the reference manual, the device should run at 24MHz immediately after reset.
+The internal RC oscillator does indeed run at 24MHz but I found the clock fed to
+internal peripherals was 8MHz. I later found the HPRE field in RCC_CFGR0 was 0b0010
+after reset instead of 0b0000 as documented.
+
+Below is the code in `blink24.S` to set HPRE to 0, a one-line change.
+The rest of the code remained the same as `blink.S`
+
+### Setting HCLK to run at 48MHz
+This required turning on the PLL waiting for the PLL to become ready.
+Flash wait-states should also be set to 1 for reliable operation.
+
+.code src/ch32v003/blink24/blink24.S /gpiod_clk_en:/,/sw zero/
