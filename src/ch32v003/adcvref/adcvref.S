@@ -137,6 +137,12 @@ enable_clock_to_adc:
 	ori t1,t1,1<<3
 	sw t1, ADC_CTLR2(t0)
 
+	# CAL 3/4 VDD
+	#lw t1, ADC_CTLR1(t0)
+	#li t2, 0b10<<25
+	#or t1,t1,t2
+	#sw t1, ADC_CTLR1(t0)
+
 	li t2, 1<<3
 .adc_wait_cal_reset:
 	lw t1, ADC_CTLR2(t0)
@@ -160,6 +166,7 @@ enable_clock_to_adc:
 
 	# set the channel to be converted, Vref=ch8, for the 1st conversion, the field is in ADC_RSQR3.
 	li t1, 8
+	#li t1, 9
 	sw t1, ADC_RSQR3(t0)
 	
 send_conversion_start_msg:
@@ -227,6 +234,7 @@ Put_hex_half_word:
 
 	# check TX E (TX Empty) in status register
 .put_hex_hw_wait:
+	li t0, USART_BASE
 	lw t2, USART_STATR(t0)
 	andi t2, t2,(1<<7)
 	beqz t2, .put_hex_hw_wait
