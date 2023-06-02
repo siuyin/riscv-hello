@@ -470,8 +470,25 @@ after reset instead of 0b0000 as documented.
 Below is the code in `blink24.S` to set HPRE to 0, a one-line change.
 The rest of the code remained the same as `blink.S`
 
-### Setting HCLK to run at 48MHz
-This required turning on the PLL waiting for the PLL to become ready.
-Flash wait-states should also be set to 1 for reliable operation.
+`src/ch32v003/blink24/blink24.S:`
 
 .code src/ch32v003/blink24/blink24.S /gpiod_clk_en:/,/sw zero/
+
+### Setting HCLK to run at 48MHz
+This required turning on the PLL,
+waiting for the PLL to become ready,
+then setting the clock source to be the PLL instead of HSI.
+
+The flash access wait-state should also be set to 1
+to ensure reliable operation.
+
+I've adopted a convention in the source below where labels
+starting with a capitalized letter should be treated as a
+globally accessible or public label.
+
+Labels starting with a lower case label are "private"
+and those starting with a . (dot) are "local".
+
+`src/ch32v003/blink48/blink48.S:`
+
+.code src/ch32v003/blink48/blink48.S
