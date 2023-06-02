@@ -1,4 +1,5 @@
 /* uart.S prints hello world to the UART.
+ * Connect PD5(uart TX) to the RX of your terminal.
  * 112500 8 N 1
  */ 
 
@@ -81,15 +82,15 @@ USART_115200:
 	or t1, t1, t2
 	sw t1, GPIOD_CFGLR(t0)
 
-	# enable RX,TX  USART_CTLR1
+	# enable RX,TX on USART_CTLR1
 	li t0, USART_BASE
 	lw t1, USART_CTLR1(t0)
 	li t2, 1<<2 | 1<<3
 	or t1, t1, t2
 	sw t1, USART_CTLR1(t0)
 
-	# set BR R (bit rate register) 26.042 = 48MHz/(16 * 115200). 0.667 = 0.42*16 => round to 1
-	li t1, (26<<4) | 1
+	# set BR R (bit rate register) 26.042 = 48MHz/(16 * 115200); 0.667 = 0.042*16 => round to 1
+	li t1, (26<<4) + 1
 	sw t1, USART_BRR(t0)
 
 	# enable uart
@@ -128,7 +129,7 @@ Put_string:
 
 halt: 	j halt
 
-.section  .rodata
+.section .rodata
 
 msg:
-	.string "Hello risc-v!\n"
+	.string "Hello RISC-V!\n"

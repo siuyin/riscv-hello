@@ -492,3 +492,78 @@ and those starting with a . (dot) are "local".
 `src/ch32v003/blink48/blink48.S:`
 
 .code src/ch32v003/blink48/blink48.S
+
+### Getting the UART working
+The USART (Universal Synchronous/Asynchronous Receiver Transmitter)
+on the ch32v003f4p6 is on PD5 (GPIO Port D, pin 5).
+
+Below is the code to print "Hello RISC-V" to the uart.
+
+This is a long source file, so give it a quick read-through and I will
+go through the parts step-by-step.
+
+`src/ch32v003/uart/uart.S:`
+
+.code src/ch32v003/uart/uart.S
+
+Below is the initialisation code to turn enable GPIOD and the USART.
+
+.code src/ch32v003/uart/uart.S /USART_115200:/,/sw t1, RCC_APB2PCENR/
+
+Now that we have the clock running to GPIOD and the USART,
+we configure GPIOD to be alternate function and a push-pull output.
+
+.code src/ch32v003/uart/uart.S /# make GPIOD PD5 alternate function/,/sw t1, GPIOD_CFGLR/
+
+We now get to configuring the USART.
+The code below turns on the USART transmitter and receiver sections.
+We have not actually enabled the USART yet, we do this later by setting the UE (USART Enable)
+bit.
+
+.code src/ch32v003/uart/uart.S /# enable RX,TX on USART_CTLR1/,/sw t1, USART_CTLR1/
+
+Proceed to set the Bit Rate Register then enable the USART.
+
+.code src/ch32v003/uart/uart.S /# set BR R/,/sw t1, USART_CTLR1/
+
+With a working USART, we can send a pre-programmed message.
+This message is stored in the .rodata (read-only data) section on flash.
+
+.code src/ch32v003/uart/uart.S /.section .rodata/,/Hello/
+
+Refer again to the ABI, function call parameters are placed in a0 through a5
+on rv32c. If there are more parameters, we place them on the stack.
+The stack also holds function-local variables. I will explore this later
+with C function calls.
+
+<img src="img/rv32e-regs.png" width="800"/>
+
+Below is the function call to Put_string.
+
+.code src/ch32v003/uart/uart.S /send_msg:/,/j halt/
+
+`la a0, msg` : **l**oad **a**ddress into a0, the address of msg
+
+And here is the definition of `Put_string`.
+
+.code src/ch32v003/uart/uart.S /Put_string:/,/ret/
+
+Let's walk through the interesting parts.
+
+`lbu t1, (a0)` : **l**oad **b**yte **u**nsigned with the byte pointed to by a0 into t1.
+The first time around the loop, this byte will be the first character of the `msg`.
+
+`beqz t1, .puts_leave`: **b**ranch **eq**ual to **z**ero to label `.puts_leave` if t1 is zero.
+C strings are null (0, zero) terminated.
+Thus is we detect a zero, we are done and the Put_string function returns.
+
+`USART STAT R` : the status register has a TX E (TX Empty) flag on bit 7.
+When this bit is set, the USART has sent the character in its buffer
+and is ready for the next character.
+If TX E is not set, we loop and check again.
+
+`sw t1, USART_DATAR(t0)` : We get to this line when TX E is empty.
+This means we are clear to send a character. Do this by writing the byte
+stored in t1 to USART DATA R.
+
+When are done writing, advance a0 to point to the next character in `msg`, then repeat.
