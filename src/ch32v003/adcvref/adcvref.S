@@ -137,7 +137,7 @@ enable_clock_to_adc:
 	ori t1,t1,1<<3
 	sw t1, ADC_CTLR2(t0)
 
-	li t2, ~(1<<3)
+	li t2, 1<<3
 .adc_wait_cal_reset:
 	lw t1, ADC_CTLR2(t0)
 	and t1,t1,t2
@@ -148,7 +148,7 @@ enable_clock_to_adc:
 	ori t1,t1,1<<2
 	sw t1, ADC_CTLR2(t0)
 
-	li t2, ~(1<<2)
+	li t2, 1<<2
 .adc_wait_cal_done:
 	lw t1, ADC_CTLR2(t0)
 	and t1,t1,t2
@@ -173,6 +173,10 @@ enable_clock_to_adc:
 	lw t1, ADC_STATR(t0)
 	andi t1, t1, 1<<1
 	beqz t1, .wait_for_eoc
+
+send_conversion_start_msg:
+	la a0, msg1
+	jal Put_string
 
 	# data alignment in ADC_CTLR2. Default is right-aligned.
 	# single channel conversion. following fields are reset: CONT,SCAN, RDISCEN/IDISCEN, IAUTO in CTLR1 and CTLR2
@@ -214,3 +218,5 @@ halt: 	j halt
 
 msg0:
 	.string "reading Vref on analog in 7\n"
+msg1:
+	.string "ADC conversion started. Please switch to hexadecimal mode on your terminal.\n"
