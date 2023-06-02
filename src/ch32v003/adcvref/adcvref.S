@@ -162,7 +162,12 @@ enable_clock_to_adc:
 	li t1, 8
 	sw t1, ADC_RSQR3(t0)
 	
+send_conversion_start_msg:
+	la a0, msg1
+	jal Put_string
+.start_conv:
 	# ADON to start measuring. Data will be in ADC_RDATAR
+	li t0, ADC_BASE
 	lw t1, ADC_CTLR2(t0)
 	ori t1,t1, 1<<0
 	sw t1, ADC_CTLR2(t0)
@@ -173,20 +178,22 @@ enable_clock_to_adc:
 	lw t1, ADC_STATR(t0)
 	andi t1, t1, 1<<1
 	beqz t1, .wait_for_eoc
+	
+	li t0, ADC_BASE
+	lw a0, ADC_RDATAR(t0)
+	jal Put_hex_half_word
 
-send_conversion_start_msg:
-	la a0, msg1
-	jal Put_string
+	li a0, 1000000
+	jal delay
+
+
+	j .start_conv
 
 	# data alignment in ADC_CTLR2. Default is right-aligned.
 	# single channel conversion. following fields are reset: CONT,SCAN, RDISCEN/IDISCEN, IAUTO in CTLR1 and CTLR2
 	# EOC in ADC_STATR will be set after converson, cleared by reading ADC_RDATAR.
 	# CALVOL in ADC_CTLR1 allows AD9 to be VDD/2 or 3/4*VDD
 	# start conversion with SWSTART on ADC_CTLR2 ? may also need to set ADON in ADC_CTLR2.
-
-
-
-
 
 	j halt
 
@@ -212,6 +219,27 @@ Put_string:
 	ret
 
 
+Put_hex_half_word:
+	mv a1,a0
+	srai a1,a1,8
+	li t0, USART_BASE
+	sb a1, USART_DATAR(t0)
+
+	# check TX E (TX Empty) in status register
+.put_hex_hw_wait:
+	lw t2, USART_STATR(t0)
+	andi t2, t2,(1<<7)
+	beqz t2, .put_hex_hw_wait
+
+	sb a0, USART_DATAR(t0)
+
+	ret
+
+delay:
+	addi a0,a0,-1
+	bnez a0, delay
+	ret
+
 halt: 	j halt
 
 .section .rodata
@@ -219,4 +247,4 @@ halt: 	j halt
 msg0:
 	.string "reading Vref on analog in 7\n"
 msg1:
-	.string "ADC conversion started. Please switch to hexadecimal mode on your terminal.\n"
+	.string "ADC conversion started.\nPlease switch to hexadecimal mode on your terminal.\n"
