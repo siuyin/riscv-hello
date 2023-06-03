@@ -30,6 +30,8 @@
 .equ ADC_STATR, 0x0
 .equ ADC_CTLR1, 0x04
 .equ ADC_CTLR2, 0x08
+.equ ADC_SAMPTR1, 0x0c
+.equ ADC_SAMPTR2, 0x10
 .equ ADC_RSQR1, 0x2c
 .equ ADC_RSQR2, 0x30
 .equ ADC_RSQR3, 0x34
@@ -137,12 +139,6 @@ enable_clock_to_adc:
 	ori t1,t1,1<<3
 	sw t1, ADC_CTLR2(t0)
 
-	# CAL 3/4 VDD
-	#lw t1, ADC_CTLR1(t0)
-	#li t2, 0b10<<25
-	#or t1,t1,t2
-	#sw t1, ADC_CTLR1(t0)
-
 	li t2, 1<<3
 .adc_wait_cal_reset:
 	lw t1, ADC_CTLR2(t0)
@@ -164,6 +160,12 @@ enable_clock_to_adc:
 	li t1, 0b0001<<20
 	sw t1, ADC_RSQR1(t0)
 
+	# set sampling time for channel 8 and 9
+	lw t1, ADC_SAMPTR2(t0)
+	li t2, (0b001<<8) | (0b001<<9)
+	or t1,t1,t2
+	sw t1, ADC_SAMPTR2(t0)
+	
 	# set the channel to be converted, Vref=ch8, for the 1st conversion, the field is in ADC_RSQR3.
 	li t1, 8
 	#li t1, 9
@@ -190,7 +192,7 @@ send_conversion_start_msg:
 	lw a0, ADC_RDATAR(t0)
 	jal Put_hex_half_word
 
-	li a0, 1000000
+	li a0, 4000000
 	jal delay
 
 
@@ -228,21 +230,24 @@ Put_string:
 
 Put_hex_half_word:
 	mv a1,a0
-	srai a1,a1,8
+	srli a0,a0,8
 	li t0, USART_BASE
-	sb a1, USART_DATAR(t0)
+	jal t0, Put_char 
 
-	# check TX E (TX Empty) in status register
-.put_hex_hw_wait:
-	li t0, USART_BASE
-	lw t2, USART_STATR(t0)
-	andi t2, t2,(1<<7)
-	beqz t2, .put_hex_hw_wait
-
-	sb a0, USART_DATAR(t0)
+	mv a0,a1
+	jal t0, Put_char
 
 	ret
 
+Put_char:
+	li t2, USART_BASE
+.put_char_wait:
+	lw t1, USART_STATR(t2)
+	andi t1, t1, (1<<7)
+	beqz t1, .put_char_wait
+	sb a0, USART_DATAR(t2)
+	jalr zero,t0,0
+	
 delay:
 	addi a0,a0,-1
 	bnez a0, delay
