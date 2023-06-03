@@ -567,3 +567,94 @@ This means we are clear to send a character. Do this by writing the byte
 stored in t1 to USART DATA R.
 
 When are done writing, advance a0 to point to the next character in `msg`, then repeat.
+
+### ADC and UART
+The goal is to use the ADC to measure the device's internal voltage reference (typically 1.2V).
+
+The ADC's 10 bit output is then sent to the user's terminal in hexadecimal mode (vs ASCII).
+
+Below is the full listing. Again only give this a quick read to get an overview and I
+will delve into the key areas after this.
+
+`src/ch32v003/adcvref/adcvref.S:`
+
+.code src/ch32v003/adcvref/adcvref.S
+
+The ADC is connected to GPIO pins and you will need to configure the GPIO ports
+accordingly to measure external signals.
+
+I am however only measuring an internal signal on AN08 (Analog input 8).
+AN08 is not connected to GPIO pins and hence I've skipped the GPIO initialisation.
+
+.code src/ch32v003/adcvref/adcvref.S /enable_clock_to_adc:/,/sw t1, RCC_APB2PCENR/
+
+The above code is pretty standard. It sends the clock to the ADC module.
+Below is where the ADC is actually turned on with the AD ON command.
+Note the requisite delay. I did not count cycles and chose to err to
+delay longer the necessary.
+
+.code src/ch32v003/adcvref/adcvref.S /# turn on ADC/,/bnez t1, .adc_wait_init/
+
+Next comes the calibration reset and calibration routine.
+This allows the ADC to run an internal calibration to improve accuracy.
+
+.code src/ch32v003/adcvref/adcvref.S /li t2, 1<<3/,/bnez t1, .adc_wait_cal_done/
+
+Next came the channel selection. This confused me, having to re-read the reference manual
+several times. My understanding is the ch32v003's ADC has external AN0 through AN7 and 
+two internal channels AN8 and AN9. The ADC is able to sample AN0 through AN9 as
+a sequence of up to 16 measurements. The first in the sequence could be to measure, say,
+AN5, the second, AN3 and later on the 10th sequence AN5 again.
+
+The first thing to do to program this sequence of sampling is to first decide the length of your sampling sequence.
+For this example, I chose the minimum of 1.
+
+More confusingly, there are two sampling sequences. The "regular" sequence and the "injection" sequence.
+The regular sequence has access to DMA while the injection sequence does not.
+I will use only the regular sequence in this example.
+
+.code src/ch32v003/adcvref/adcvref.S /# set the number of conversions/,/sw t1, ADC_RSQR3/
+
+I have commented out selection of channel 9 (V CAL -- connected to VDD / 2) so that I may
+easily switch between channel 9 (Vref) by commenting/uncommenting lines.
+
+According to the data sheet the maximum ADC clock rate when powered with 3.3V is 12MHz.
+The minimum sampling time is 3 ADC clock cycles (0.25us or 250ns). I decided to go with
+9 cycles (0.75us). This is acceptable as the sampling capacitor is only 3pF, even
+with in input impedance of 100 Ohms, the time constant is 0.3ns. 10 time constants is 3ns.
+
+Let's move on the the actual ADC and data capture.
+In the conversion start message, I prompt the user to switch the terminal to hex mode.
+To avoid rewriting printf, I will be sending hex values and not ASCII characters.
+The ADC places the data after conversion in R DATA R (regular data register).
+That byte is then loaded into a0 before calling Put_hex_half_word.
+And that is when this code becomes interesting.
+
+.code src/ch32v003/adcvref/adcvref.S /send_conversion_start_msg:/,/j .start_conv/ 
+
+Please read the code below and note that I call a further subroutine Put_char
+within the subroutine Put_hex_half_word.
+
+.code src/ch32v003/adcvref/adcvref.S /Put_hex_half_word:/,/jalr zero,t0,0/
+
+Put_char is called in an unusual way: `jal t0, Put_char` rather than just
+`jal Put_char`.
+
+The regular form `jal Put_char` actually assembles to `jal ra, Put_char` and 
+the `ret` psuedoinstruction assembles to `jalr x0,x1,0` or `jalr zero,ra,0` as
+x0 = zero and x1 = ra.
+
+The call to Put_hex_half_word has already taken up ra. A nested call within
+Put_hex_half_word would replace the value in ra. Instead we use x5 (or t0)
+instead to call Put_char.
+
+We then do not use `ret` but jalr zero,t0,0 instead.
+
+Below is a snippet of the output on my terminal.
+
+```
+01 7a 01 7a 01 7a 01 7a 01 7a 01 7a ...
+```
+
+The value is 0x017a or 378 decimal. Full-scale is 1023 and VDD is about 3.3V
+Hence Vref is 378/1023 * 3.3V or about 1.22 V.
